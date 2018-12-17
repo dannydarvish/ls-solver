@@ -7,8 +7,8 @@ for E in range(300,1600,100):
 #PBS -l cput=256:00:00
 #PBS -l nodes=1:ppn=4
 #PBS -j oe
-#PBS -o /latticeQCD/raid6/darvish/eft-coupled-LS/cpp/iepsilon/jobs/E_%d.log
-#PBS -e /latticeQCD/raid6/darvish/eft-coupled-LS/cpp/iepsilon/jobs/E_%d_err.log
+#PBS -o /latticeQCD/raid6/darvish/ls-solver/work/jobs/E_%d.log
+#PBS -e /latticeQCD/raid6/darvish/ls-solver/work/jobs/E_%d_err.log
 
 
 ''' % (E,E)
@@ -16,7 +16,7 @@ for E in range(300,1600,100):
 export PATH=$PATH:/usr/local/bin
 
 '''
-    lines += 'cd /latticeQCD/raid6/darvish/eft-coupled-LS/cpp/iepsilon/ && /latticeQCD/raid6/darvish/eft-coupled-LS/cpp/iepsilon/test-1b2c %f' % E
+    lines += 'cd /latticeQCD/raid6/darvish/ls-solver/work && /latticeQCD/raid6/darvish/ls-solver/work/test-1b2c %f' % E
     lines += '\n'
 
     f = open('E_%d_job' % E, 'w')

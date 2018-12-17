@@ -21,6 +21,7 @@ private:
     double kp, k_max, E, dk_tol, ep;
     int beta, n_bare, n_chan, n_subint_steps;
     bool started_t_mat;
+    int max_dim;
     vector<double> m_sigma;
     // We discretize k differently for each channel,
     // since the integrands are different for each 
@@ -30,9 +31,7 @@ private:
     vector<pair<double, double> > m_alpha;
     vector<cdouble> t;
     vector<vector<cdouble (*)(double)> > g;
-    // vector<cvec> (*v) (double, double);
     vector<vector<cdouble (*)(double, double)> > v;
-    // vector<cvec> V(double k, double kp);
     cdouble V(double k, double kp, int alpha, int beta);
     double max_frac_diff(Col<cdouble > & old_sol,
                      Col<cdouble > & new_sol, vector<vector<double> > & old_k_vec,
@@ -43,10 +42,11 @@ public:
     TransitionMatrixSolver(double kp, int beta, vector<vector<cdouble (*)(double)> > g,
         vector<vector<cdouble (*)(double, double)> > v, vector<double> m_sigma,
         vector<pair<double, double> > m_alpha, double k_max, double dk_tol,
-        int n_subint_steps, double ep):
+        int n_subint_steps, double ep, int max_dim = 10000):
             kp(kp), beta(beta), g(g), v(v), m_sigma(m_sigma), m_alpha(m_alpha),
             k_max(k_max), dk_tol(dk_tol), n_subint_steps(n_subint_steps), ep(ep),
-            started_t_mat(false), n_chan(m_alpha.size()), n_bare(m_sigma.size())
+            started_t_mat(false), n_chan(m_alpha.size()), n_bare(m_sigma.size()),
+            max_dim(max_dim)
     {
         E = sqrt(sqr(m_alpha[beta].first) + sqr(kp)) + sqrt(sqr(m_alpha[beta].second) + sqr(kp));
         k_vec.resize(n_chan);

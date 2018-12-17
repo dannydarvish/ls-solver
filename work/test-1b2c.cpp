@@ -76,7 +76,7 @@ int main(int argc, const char * argv[])
         double kp = sqrt(sqr(E/2.0) - sqr(m_pi));
         double delta_pipi_re;
         double ep = 1e-1;
-        double k_max = 40*kp;
+        double k_max = 4*kp;
         TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-2, 100, 10.0);
         const vector<complex<double> > t = tms.get_t_matrix();
         const vector<vector<double> > k_vec = tms.get_k_vec();

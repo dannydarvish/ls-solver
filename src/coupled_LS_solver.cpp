@@ -11,6 +11,8 @@
 using namespace std;
 using namespace arma;
 
+// To do: change assertions to exceptions
+
 // debugging
 ///////////////////////////////////////////////////////////////////////////////////////////
 #include <iomanip>
@@ -114,6 +116,7 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
     int dim = 0;
     for (int c = 0; c < n_chan; c++)
         dim += k_vec[c].size();
+    assert(dim <= max_dim);
     M.resize(dim, dim);
     b.resize(dim);
 
@@ -123,7 +126,6 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
     {
         for (int k_ind = 0; k_ind < k_vec[alpha].size(); k_ind++)
         {
-            // cout << i << endl;
             double k = k_vec[alpha][k_ind];
             int j = 0;
             for (int gamma = 0; gamma < n_chan; gamma++)
@@ -131,7 +133,7 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
                 for (int kpp_ind = 0; kpp_ind < k_vec[gamma].size(); kpp_ind++)
                 {
                     double kpp = k_vec[gamma][kpp_ind];
-                    if (kpp_ind == 0 )//|| kpp_ind == k_vec[gamma].size() - 1)
+                    if (kpp_ind == 0 )
                         dk = 0.5 * (k_vec[gamma][kpp_ind + 1] - k_vec[gamma][kpp_ind]);
                     else if (kpp_ind == k_vec[gamma].size() - 1)
                         dk = 0.5 * (k_vec[gamma][kpp_ind] - k_vec[gamma][kpp_ind - 1]);
@@ -163,26 +165,7 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
 const cvec & TransitionMatrixSolver::get_t_matrix()
 {
     if (!started_t_mat)
-    {
-        // {
-        //     ofstream fout_re("int_re.txt");
-        //     ofstream fout_im("int_im.txt");
-        //     double k = kp;
-        //     for (double kpp = 0; kpp <= k_max; kpp += k_max/1000)
-        //     {
-        //         fout_re << real(sqr(kpp) * V(k, kpp, 0, 0) * 
-        //                     1.0 / (E - sqrt(sqr(m_alpha[0].first) + sqr(kpp)) - 
-        //                                 sqrt(sqr(m_alpha[0].second)+ sqr(kpp)) +
-        //                                 cdouble(1i)*ep)) << endl;
-        //         fout_im << imag(sqr(kpp) * V(k, kpp, 0, 0) * 
-        //                     1.0 / (E - sqrt(sqr(m_alpha[0].first) + sqr(kpp)) - 
-        //                                 sqrt(sqr(m_alpha[0].second)+ sqr(kpp)) +
-        //                                 cdouble(1i)*ep)) << endl;
-        //     }
-        //     fout_re.close();
-        //     fout_im.close();
-        // }
-        
+    {        
         cout << "Solving for transition matrix." << endl;
         started_t_mat = true;
         vector<vector<double> > subint_pts(n_chan);
@@ -204,7 +187,6 @@ const cvec & TransitionMatrixSolver::get_t_matrix()
         // We will use adaptive refinement to determine how k_vec is discretized.
         while(true)
         {
-            // cout << endl << endl << "new sweep" << endl << endl;
             for (int c = 0; c < n_chan; c++)
                 for (int i = 0; i < subint_pts[c].size() - 1; i++)
                     assert(subint_pts[c][i+1] > subint_pts[c][i]);
@@ -216,12 +198,10 @@ const cvec & TransitionMatrixSolver::get_t_matrix()
             cout << "Dimension: " << temp << endl;
 
             old_sol = solve(M, b);
-            // cout << "Base solution solved." << endl;
             old_k_vec = k_vec;
             int total_num_pts_to_add = 0;
             for (int gam = 0; gam < n_chan; gam++)
             {
-                // cout << subint_pts[gam] << endl;
                 for (int i = 0; i < subint_pts[gam].size()-1; i++)
                 {
                     if (bool(count(subint_pts_to_skip[gam].begin(),
@@ -238,11 +218,7 @@ const cvec & TransitionMatrixSolver::get_t_matrix()
 
                     frac_diff = max_frac_diff(old_sol, new_sol, old_k_vec, k_vec, gam, i);
                     if (frac_diff > dk_tol)
-                    {
-                        // cout << "Fractional difference: " << frac_diff << endl;
                         pts_to_add[gam].push_back(pt_to_add);
-                        // cout << pt_to_add << " added." << endl;
-                    }
                     else
                         subint_pts_to_skip[gam].push_back(subint_pts[gam][i]);
                 }
@@ -254,8 +230,6 @@ const cvec & TransitionMatrixSolver::get_t_matrix()
             }
             if (total_num_pts_to_add == 0)
                 break;
-            // else
-                // cout << total_num_pts_to_add  << " points added." << endl;
         }
         k_vec = old_k_vec;
         t = conv_to<cvec>::from(old_sol);
