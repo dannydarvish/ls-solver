@@ -67,35 +67,28 @@ vector<vector<complex<double> (*)(double, double)> > v = {{v_00, v_01},
 int main(int argc, const char * argv[])
 {
     
-    // for (double E = 300.0; E <= 1500.0; E += 100.0)
-    //     E_vec.push_back(E);
-    E_vec.push_back(stod(argv[1]));
-    ofstream fout("delta_pipi_re_1b2c_E_" + string(argv[1]) + ".txt");
-    for (double E : E_vec)
+    double E =stod(argv[1]);
+    double kp = sqrt(sqr(E/2.0) - sqr(m_pi));
+    double delta_pipi_re;
+    double ep = 1e-1;
+    double k_max = 10*kp;
+    TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-2, 100, 10.0);
+    const vector<complex<double> > t = tms.get_t_matrix();
+    const vector<vector<double> > k_vec = tms.get_k_vec();
+    for (int i = 0; i < k_vec[0].size(); i++)
     {
-        double kp = sqrt(sqr(E/2.0) - sqr(m_pi));
-        double delta_pipi_re;
-        double ep = 1e-1;
-        double k_max = 4*kp;
-        TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-2, 100, 10.0);
-        const vector<complex<double> > t = tms.get_t_matrix();
-        const vector<vector<double> > k_vec = tms.get_k_vec();
-        for (int i = 0; i < k_vec[0].size(); i++)
+        double k = k_vec[0][i];
+        if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
         {
-            double k = k_vec[0][i];
-            if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
-            {
-                delta_pipi_re = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
-                                                sqrt(sqr(k)+sqr(m_pi))*t[i]));
-                if (delta_pipi_re < 0)
-                    delta_pipi_re += 2*M_PI;
-                // delta_pipi_re = fmod(delta_pipi_re, M_PI);
-                cout << "E: " << E << 
-                    ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i] <<
-                        ", delta = " << delta_pipi_re << "." << endl;
-                fout << E << " " << delta_pipi_re * 180.0 / M_PI << endl;
-            }
+            delta_pipi_re = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
+                                            sqrt(sqr(k)+sqr(m_pi))*t[i]));
+            if (delta_pipi_re < 0)
+                delta_pipi_re += M_PI;
+            cout << "E: " << E << 
+                ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i] <<
+                    ", delta = " << delta_pipi_re << "." << endl;
         }
     }
+
     return 0;
 }
