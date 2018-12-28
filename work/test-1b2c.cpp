@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <assert.h>
 #include <fstream>
 #include "coupled_LS_solver.h"
 
@@ -26,7 +27,6 @@ double G_pi_pi_k_kbar = 0.3500;
 vector<double> m_sigma = {700.0};
 vector<pair<double,double> > m_alpha = {{m_pi,m_pi},
                                         {m_k, m_k}};
-int beta = 0;
 double fm_times_MeV = 0.005067731;
 
 vector<double> E_vec;
@@ -68,13 +68,16 @@ int main(int argc, const char * argv[])
 {
     
     double E =stod(argv[1]);
+    int beta = 0;
     double kp = sqrt(sqr(E/2.0) - sqr(m_pi));
-    double delta_pipi_re;
-    double ep = 1e-1;
-    double k_max = 10*kp;
-    TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-2, 100, 10.0);
-    const vector<complex<double> > t = tms.get_t_matrix();
-    const vector<vector<double> > k_vec = tms.get_k_vec();
+    double k_max = 20000.0;
+
+    double delta_pipi_re, delta_pipi_re_ep100, delta_pipi_re_ep75, delta_pipi_re_ep50;
+
+    double ep = 37.5;
+    TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-3, 100, ep, 15000);
+    vector<complex<double> > t = tms.get_t_matrix();
+    vector<vector<double> > k_vec = tms.get_k_vec();
     for (int i = 0; i < k_vec[0].size(); i++)
     {
         double k = k_vec[0][i];
@@ -84,11 +87,80 @@ int main(int argc, const char * argv[])
                                             sqrt(sqr(k)+sqr(m_pi))*t[i]));
             if (delta_pipi_re < 0)
                 delta_pipi_re += M_PI;
+            // if (E > 2*m_pi)
+            //     delta_pipi_re += M_PI;
             cout << "E: " << E << 
-                ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i] <<
-                    ", delta = " << delta_pipi_re << "." << endl;
+                ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i+k_vec[0].size()] <<
+                    ", delta_pipi_re = " << delta_pipi_re << "." << endl;
         }
     }
+
+    // double ep = 100;
+    // TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-3, 100, ep, 15000);
+    // vector<complex<double> > t = tms.get_t_matrix();
+    // vector<vector<double> > k_vec = tms.get_k_vec();
+    // for (int i = 0; i < k_vec[0].size(); i++)
+    // {
+    //     double k = k_vec[0][i];
+    //     if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
+    //     {
+    //         delta_pipi_re_ep100 = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
+    //                                         sqrt(sqr(k)+sqr(m_pi))*t[i]));
+    //         if (delta_pipi_re_ep100 < 0)
+    //             delta_pipi_re_ep100 += M_PI;
+    //         // if (E > 2*m_pi)
+    //         //     delta_pipi_re += M_PI;
+    //         cout << "E: " << E << 
+    //             ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i+k_vec[0].size()] <<
+    //                 ", delta_pipi_re_ep100 = " << delta_pipi_re_ep100 << "." << endl;
+    //     }
+    // }
+    // ep = 75;
+    // tms = TransitionMatrixSolver(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-3, 100, ep, 15000);
+    // t = tms.get_t_matrix();
+    // k_vec = tms.get_k_vec();
+    // for (int i = 0; i < k_vec[0].size(); i++)
+    // {
+    //     double k = k_vec[0][i];
+    //     if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
+    //     {
+    //         delta_pipi_re_ep75 = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
+    //                                         sqrt(sqr(k)+sqr(m_pi))*t[i]));
+    //         if (delta_pipi_re_ep75 < 0)
+    //             delta_pipi_re_ep75 += M_PI;
+    //         // if (E > 2*m_pi)
+    //         //     delta_pipi_re += M_PI;
+    //         cout << "E: " << E << 
+    //             ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i+k_vec[0].size()] <<
+    //                 ", delta_pipi_re_ep75 = " << delta_pipi_re_ep75 << "." << endl;
+    //     }
+    // }
+    // ep = 50;
+    // tms = TransitionMatrixSolver(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-3, 100, ep, 15000);
+    // t = tms.get_t_matrix();
+    // k_vec = tms.get_k_vec();
+    // for (int i = 0; i < k_vec[0].size(); i++)
+    // {
+    //     double k = k_vec[0][i];
+    //     if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
+    //     {
+    //         delta_pipi_re_ep50 = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
+    //                                         sqrt(sqr(k)+sqr(m_pi))*t[i]));
+    //         if (delta_pipi_re_ep50 < 0)
+    //             delta_pipi_re_ep50 += M_PI;
+    //         // if (E > 2*m_pi)
+    //         //     delta_pipi_re += M_PI;
+    //         cout << "E: " << E << 
+    //             ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i+k_vec[0].size()] <<
+    //                 ", delta_pipi_re_ep50 = " << delta_pipi_re_ep50 << "." << endl;
+    //     }
+    // }
+    // cout << "E: " << E << 
+    //             ", k_max: " << k_max << ", ep : " << ep <<
+    //                 ", delta_pipi_re = " << 
+    //                 delta_pipi_re_ep75 + 75.0 * (delta_pipi_re_ep50 - delta_pipi_re_ep100) / 50.0 + 
+    //                 0.5 * (delta_pipi_re_ep50 + delta_pipi_re_ep100 - 2*delta_pipi_re_ep75) / sqr(25.0) * sqr(75.0)
+    //                 << "." << endl;
 
     return 0;
 }

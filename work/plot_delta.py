@@ -4,18 +4,26 @@ import re
 
 energy_list = []
 delta_list = []
-# for E in range(300,1600,100):
-# for E in [300,400,500,600,690,800,900,1000,1200,1300,1400,1500]:
-for E in range(300,1010,10):
+# for E in range(300,900,10) + range(900,1000,1) + range(1000,1500,10):
+# for E in range(1000,1201,5):
+for E in range(750,1201,10):
     if E == 700:
         E = 690
+    try:
+        f = open('jobs/E_%d.log' % E)
+    except IOError:
+        print('E = %f file not present' % E)
+        continue
     energy_list.append(E)
-    f = open('jobs/E_%d.log' % E)
     lines = f.read().splitlines()
     for line in lines:
-        if 'delta' in line:
-            delta = float(re.search('delta = (\d*.\d*).', line).group(1))
-    delta_list.append(delta*180.0/np.pi)
+        if 'delta_pipi_re ' in line:
+            delta = float(re.search('delta_pipi_re = (\d*.\d*).', line).group(1))
+            # if E < 1010:
+            #     delta += np.pi
+            # if E == 1000:
+            #     delta += np.pi
+            delta_list.append(delta*180.0/np.pi)
 
 plt.plot(energy_list, delta_list)
 plt.show()

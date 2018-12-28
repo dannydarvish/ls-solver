@@ -1,5 +1,7 @@
-for E in range(300,1600,100):
+# for E in range(300,1501,10):
 # for E in range(300,1010,10):
+# for E in range(900,1000,1):
+for E in range(750,1201,10):
     if E == 700:
         E = 690
 

@@ -19,6 +19,7 @@ class TransitionMatrixSolver
 {
 private:
     double kp, k_max, E, dk_tol, ep;
+    vector<int> kp_ind; // keep track of which index, for each channel, points to kp
     int beta, n_bare, n_chan, n_subint_steps;
     bool started_t_mat;
     int max_dim;
@@ -36,6 +37,9 @@ private:
     double max_frac_diff(Col<cdouble > & old_sol,
                      Col<cdouble > & new_sol, vector<vector<double> > & old_k_vec,
                      vector<vector<double> > & new_k_vec, int gamma, int i);
+    double kp_frac_diff(Col<cdouble> & old_sol, Col<cdouble> & new_sol,
+                        vector<vector<double> > & old_k_vec, vector<vector<double> > & new_k_vec,
+                        int gamma, int i, int old_kp_ind, int new_kp_ind);
     void construct_linear_system(Mat<cdouble> & M, Col<cdouble> & b, double k_max,
                                  vector<vector<double> > & subint_pts);
 public:
@@ -50,6 +54,7 @@ public:
     {
         E = sqrt(sqr(m_alpha[beta].first) + sqr(kp)) + sqrt(sqr(m_alpha[beta].second) + sqr(kp));
         k_vec.resize(n_chan);
+        kp_ind.resize(n_chan, -1);
     }
     const cvec & get_t_matrix();
     const vector<vector<double> > & get_k_vec();
