@@ -11,21 +11,6 @@
 using namespace std;
 using namespace arma;
 
-// To do: change assertions to exceptions
-
-// debugging
-///////////////////////////////////////////////////////////////////////////////////////////
-#include <iomanip>
-#include <fstream>
-ostream & operator<< (ostream & out, vector<double> v)
-{
-    for (auto a : v)
-        out << a << endl;
-    cout << endl;   
-    return out;
-}
-//////////////////////////////////////////////////////////////////////////////////////////
-
 cdouble TransitionMatrixSolver::V(double k, double kp,
                                   int alpha, int beta)
 {
@@ -40,252 +25,127 @@ cdouble TransitionMatrixSolver::V(double k, double kp,
     return ret;
 }
 
-
-double TransitionMatrixSolver::max_frac_diff(Col<cdouble > & old_sol,
-                     Col<cdouble > & new_sol, vector<vector<double> > & old_k_vec,
-                     vector<vector<double> > & new_k_vec, int gamma, int i)
+cvec kernel_moment(double b, double msq, cdouble E_plus_iep)
 {
-    double max_so_far = 0;
-    double comp;
-    for (int j = 0; j < old_k_vec[gamma].size(); j++)
-    {
-        int jp;
-        if (!((old_k_vec[gamma].size() - 1) % n_subint_steps == 0))
-            cout << k_max << endl << endl << n_subint_steps << endl << endl <<  old_k_vec[gamma] << endl;
+    cvec moments(4);
 
-        assert((old_k_vec[gamma].size() - 1) % n_subint_steps == 0);
-        if (double(j)/n_subint_steps < i)
-            jp = j;
-        else if (i <= double(j)/n_subint_steps && double(j)/n_subint_steps < i + 1)
-            jp = 2*j - i * n_subint_steps;
-        else if (double(j)/n_subint_steps >= i + 1)
-            jp = j + n_subint_steps;
-        else
-            assert(false);
-        int to_add_old = 0;
-        int to_add_new = 0;
-        for (int a = 0; a < gamma; a++)
-        {
-            to_add_old += old_k_vec[a].size();
-            to_add_new += new_k_vec[a].size();
-        }
-
-        assert(fequals(old_k_vec[gamma][j], k_vec[gamma][jp], 1e-6*(k_vec[gamma][1] -
-                                                                    k_vec[gamma][0])));
-        comp = abs(real(old_sol[j + to_add_old] - new_sol[jp + to_add_new]) /
-                        real(old_sol[j + to_add_old]));
-        if (comp > max_so_far && !std::isinf(comp))
-            max_so_far = comp;
-
-        comp = abs(imag(old_sol[j + to_add_old] - new_sol[jp + to_add_new]) /
-                        imag(old_sol[j + to_add_old]));
-        if (comp > max_so_far && !std::isinf(comp))
-            max_so_far = comp;
-    }
-    return max_so_far;
+    cdouble q1 = sqrt(4*msq-sqr(E_plus_iep));
+    cdouble q2 = sqrt(msq + sqr(b));
+    moments[0] = -0.5*1.0/q1 * (q1 * log(q2+b) +
+                                    E_plus_iep*atan(E_plus_iep*b/(q1*q2)) +
+                                    E_plus_iep*atan(2*b/q1));
+    moments[1] = -0.25 * E_plus_iep * log(2.0*q2 - E_plus_iep) -
+                                    0.5 * q2;
+    moments[2] = 1.0/(8.0*q1) *
+                (q1*((2*msq-sqr(E_plus_iep))*log(q2+b) -
+                 2*b*(q2+E_plus_iep)) -
+                 E_plus_iep*(sqr(E_plus_iep)-4*msq)*
+                 (atan(E_plus_iep*b/(q1*q2)) + atan(2*b/q1)));
+    moments[3] = 1.0/48.0 *
+                     (-3.0*(pow(E_plus_iep,3.0)-4*msq*E_plus_iep)*log(2.0*q2-E_plus_iep) - 
+                       6.0*(sqr(E_plus_iep)-4*msq)*q2 -
+                       6.0*E_plus_iep*sqr(q2) - 8.0*pow(q2,3.0));
+    return moments;
 }
 
-double TransitionMatrixSolver::kp_frac_diff(Col<cdouble> & old_sol, Col<cdouble> & new_sol,
-                        vector<vector<double> > & old_k_vec, vector<vector<double> > & new_k_vec,
-                        int gamma, int i, int old_kp_ind, int new_kp_ind)
+void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdouble> & b)
 {
-    int j = old_kp_ind;
-    int jp = new_kp_ind;
-    if (!((old_k_vec[gamma].size() - 1) % n_subint_steps == 0))
-        cout << k_max << endl << endl << n_subint_steps << endl << endl <<  old_k_vec[gamma] << endl;
-
-    assert((old_k_vec[gamma].size() - 1) % n_subint_steps == 0);
-    
-    int to_add_old = 0;
-    int to_add_new = 0;
-    for (int a = 0; a < gamma; a++)
-    {
-        to_add_old += old_k_vec[a].size();
-        to_add_new += new_k_vec[a].size();
-    }
-
-    assert(fequals(old_k_vec[gamma][j], k_vec[gamma][jp], 1e-6*(k_vec[gamma][1] -
-                                                                k_vec[gamma][0])));
-    double re_comp= abs(real(old_sol[j + to_add_old] - new_sol[jp + to_add_new]) /
-                    real(old_sol[j + to_add_old]));
-
-    double im_comp = abs(imag(old_sol[j + to_add_old] - new_sol[jp + to_add_new]) /
-                    imag(old_sol[j + to_add_old]));
-    
-    return (re_comp > im_comp) ? re_comp : im_comp;
-}
-
-void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdouble> & b,
-                                                double k_max, vector<vector<double> > & subint_pts)
-{
-    // The integral in question is along the real line and goes from k = 0 to k = \infty.
-    // However, 
-    // Need this for trapezoidal rule to work.
-    assert(n_subint_steps > 1);
-
-    // for simpson's rule
-    assert(n_subint_steps % 2 == 0);
-    
-    for (int c = 0; c < n_chan; c++)
-    {   
-        assert(count(subint_pts[c].begin(), subint_pts[c].end(), kp) == 1);
-        k_vec[c].clear();
-        for (int i = 0; i < subint_pts[c].size() - 1; i++)
-        {
-            double dk = (subint_pts[c][i+1] - subint_pts[c][i])/n_subint_steps;
-            for (int j = 0; j < n_subint_steps; j++)
-            {
-                k_vec[c].push_back(subint_pts[c][i] + j * dk);
-            }
-        }
-        k_vec[c].push_back(subint_pts[c].back());
-        sort(k_vec[c].begin(), k_vec[c].end());
-        // determine the index of kp in k_vec
-        for (int i = 0; i < k_vec[c].size(); i++)
-            if (fequals(k_vec[c][i], kp, 1e-6*(k_vec[c][i+1]-k_vec[c][i])))
-                kp_ind[c] = i;
-        assert(kp_ind[c] >= 0);
-    }
-    int dim = 0;
-    for (int c = 0; c < n_chan; c++)
-        dim += k_vec[c].size();
-    assert(dim <= max_dim);
+    // For this implementation to work, we also need the two-particle channel
+    // masses to be equal
+    for (const auto & chan : m_alpha)
+            assert(chan.first == chan.second);
+    int dim = k_vec.size() * n_chan;
     M.resize(dim, dim);
     b.resize(dim);
-
-    double dk;
     int i = 0;
     for (int alpha = 0; alpha < n_chan; alpha++)
-    {
-        for (int k_ind = 0; k_ind < k_vec[alpha].size(); k_ind++)
+        for (int k_ind = 0; k_ind < k_vec.size(); k_ind++)
         {
-            double k = k_vec[alpha][k_ind];
+            double k = k_vec[k_ind];
             int j = 0;
             for (int gamma = 0; gamma < n_chan; gamma++)
             {
-                for (int kpp_ind = 0; kpp_ind < k_vec[gamma].size(); kpp_ind++)
+                // dk''
+                double dkpp = k_max/n_steps;
+                double dkpp_inv = 1.0/dkpp;
+                cvec weights(k_vec.size(), 0.0);
+                cvec w_lower(4), w_upper(4), w(4);
+                w_upper = kernel_moment(k_vec[0], sqr(m_alpha[gamma].first), E + cdouble(1i) * ep);
+                double B = k_vec[0];
+                for (int kpp_ind = 0; kpp_ind < k_vec.size() - 3; kpp_ind++)
                 {
-                    double kpp = k_vec[gamma][kpp_ind];
-                    // Simpson's rule
-                    if (kpp_ind == 0)
-                        dk = 1.0/3.0 * (k_vec[gamma][kpp_ind + 1] - k_vec[gamma][kpp_ind]);
-                    else if (kpp_ind == k_vec[gamma].size() - 1)
-                        dk = 1.0/3.0 * (k_vec[gamma][kpp_ind] - k_vec[gamma][kpp_ind - 1]);
-                    else if (kpp_ind % n_subint_steps == 0)
-                        dk = 1.0/3.0 * (k_vec[gamma][kpp_ind + 1] - k_vec[gamma][kpp_ind - 1]);
-                    else if ((kpp_ind % n_subint_steps) % 2 == 0)
-                        dk = 2.0/3.0 * (k_vec[gamma][kpp_ind + 1] - k_vec[gamma][kpp_ind]);
-                    else if ((kpp_ind % (n_subint_steps) % 2 != 0))
-                        dk = 4.0/3.0 * (k_vec[gamma][kpp_ind + 1] - k_vec[gamma][kpp_ind]);
-
-                    M(i,j) = delta(alpha, gamma) * delta(k, kpp, 1e-6 * dk) - 
-                            dk * sqr(kpp) * V(k, kpp, alpha, gamma) * 
-                            1.0 / (E - sqrt(sqr(m_alpha[gamma].first) + sqr(kpp)) - 
-                                        sqrt(sqr(m_alpha[gamma].second)+ sqr(kpp)) +
-                                        cdouble(1i)*ep);
+                    double A = B;
+                    w_lower = w_upper;
+                    B += dkpp;
+                    double kpp_ind_d = kpp_ind;
+                    // Stitch together a Gaussian quadrature using a singular kernel.
+                    if (kpp_ind == k_vec.size() - 4)
+                        B = dkpp * n_steps;
+                    w_upper = kernel_moment(B, sqr(m_alpha[gamma].first), E + cdouble(1i) * ep);
+                    for (int ii = 0; ii < 4; ii++)
+                        w[ii] = (w_upper[ii] - w_lower[ii]) * pow(dkpp_inv, ii);
+                    weights[kpp_ind] += (((kpp_ind_d+1.0)*(kpp_ind_d+2.0)*(kpp_ind_d+3.0)*w[0] -
+                                          (11.0+kpp_ind_d*(12.0+kpp_ind_d*3.0))*w[1] +
+                                          3.0*(kpp_ind_d+2.0)*w[2] -
+                                          w[3]
+                                         )/6.0
+                                        );
+                    weights[kpp_ind+1] += ((-kpp_ind_d*(kpp_ind_d+2.0)*(kpp_ind_d+3.0)*w[0] +
+                                           (6.0+kpp_ind_d*(10.0+kpp_ind_d*3.0))*w[1] - 
+                                           (3.0*kpp_ind_d+5.0)*w[2] +
+                                           w[3])*0.5
+                                          );
+                    weights[kpp_ind+2] += ((kpp_ind_d*(kpp_ind_d+1.0)*(kpp_ind_d+3.0)*w[0] -
+                                           (3.0+kpp_ind_d*(8.0+kpp_ind_d*3.0))*w[1] +
+                                           (3.0*kpp_ind_d+4.0)*w[2] -
+                                           w[3])*0.5
+                                          );
+                    weights[kpp_ind+3] += ((-kpp_ind_d*(kpp_ind_d+1.0)*(kpp_ind_d+2.0)*w[0] +
+                                           (2.0+kpp_ind_d*(6.0+kpp_ind_d*3.0))*w[1] -
+                                           3.0*(kpp_ind_d+1.0)*w[2] +
+                                           w[3]
+                                           )/6.0
+                                          );
+                }
+                for (int kpp_ind = 0; kpp_ind < k_vec.size(); kpp_ind++)
+                {
+                    M(i,j) = delta(alpha, gamma) * delta(k, k_vec[kpp_ind], 1e-6 * dkpp) - 
+                            sqr(k_vec[kpp_ind]) * V(k, k_vec[kpp_ind], alpha, gamma) *
+                            weights[kpp_ind];
                     j++;
                 }
             }
             i++;
         }
-    }
     i = 0;
     for (int alpha = 0; alpha < n_chan; alpha++)
-    {
-        for (double k : k_vec[alpha])
+        for (double k : k_vec)
         {
             b(i) = V(k, kp, alpha, beta);
             i++;
         }
-    }
 }
 
 const cvec & TransitionMatrixSolver::get_t_matrix()
 {
     if (!started_t_mat)
     {        
-        cout << "Solving for transition matrix." << endl;
+        cout << "Solving for transition matrix. Linear system has dimension " + 
+                to_string(n_chan*k_vec.size()) << "." << endl;
         started_t_mat = true;
-        vector<vector<double> > subint_pts(n_chan);
-        assert(k_max > kp);
-
-        // Should I change this so instead of kp, it picks the k that gives \omega'' = E for each channel?
-        // Currently it only does that for g = beta.
-        for (int g = 0; g < n_chan; g++)
-            subint_pts[g] = {0.0, kp, k_max};
-
+        if (k_max <= kp)
+            throw runtime_error("k_max is not > kp. k_max = " + to_string(k_max));
         Mat<complex<double> > M;
         Col<complex<double> > b;
-        Col<complex<double> > new_sol;
-        Col<complex<double> > old_sol;
-        vector<vector<double> > old_k_vec;
-        vector<int> old_kp_ind(n_chan);
-        double frac_diff;
-        vector<vector<double> > pts_to_add(n_chan);
-        vector<vector<double> > temp_subint_pts(n_chan);
-        double pt_to_add;
-
-        // an optimization where we ignore an interval that has already been checked.
-        vector<vector<double> > subint_pts_to_skip(n_chan);
-        // We will use adaptive refinement to determine how k_vec is discretized.
-        while(true)
-        {
-            // for (int c = 0; c < n_chan; c++)
-            //     cout << subint_pts[c] << endl << endl;
-            for (int c = 0; c < n_chan; c++)
-                for (int i = 0; i < subint_pts[c].size() - 1; i++)
-                    assert(subint_pts[c][i+1] > subint_pts[c][i]);
-            construct_linear_system(M, b, k_max, subint_pts);
-            
-            int temp = 0;
-            for (int c = 0; c < n_chan; c++)
-                temp += k_vec[c].size();
-            cout << "Dimension: " << temp << endl;
-
-            old_sol = solve(M, b);
-            old_k_vec = k_vec;
-            old_kp_ind = kp_ind;
-            int total_num_pts_to_add = 0;
-            for (int gam = 0; gam < n_chan; gam++)
-            {
-                for (int i = 0; i < subint_pts[gam].size()-1; i++)
-                {
-                    if (bool(count(subint_pts_to_skip[gam].begin(),
-                                   subint_pts_to_skip[gam].end(),
-                                   subint_pts[gam][i])))
-                        continue;
-                        
-                    temp_subint_pts = subint_pts;
-                    pt_to_add = 0.5*(subint_pts[gam][i+1] + subint_pts[gam][i]);
-                    temp_subint_pts[gam].push_back(pt_to_add);
-                    sort(temp_subint_pts[gam].begin(), temp_subint_pts[gam].end());
-                    construct_linear_system(M, b, k_max, temp_subint_pts);
-                    new_sol = solve(M, b);
-
-                    // frac_diff = max_frac_diff(old_sol, new_sol, old_k_vec, k_vec, gam, i);
-                    frac_diff = kp_frac_diff(old_sol, new_sol, old_k_vec, k_vec, gam, i,
-                                             old_kp_ind[gam], kp_ind[gam]);
-                    if (frac_diff > dk_tol)
-                        pts_to_add[gam].push_back(pt_to_add);
-                    else
-                        subint_pts_to_skip[gam].push_back(subint_pts[gam][i]);
-                }
-                total_num_pts_to_add += pts_to_add[gam].size();
-                for (double pt : pts_to_add[gam])
-                    subint_pts[gam].push_back(pt);
-                sort(subint_pts[gam].begin(), subint_pts[gam].end());
-                pts_to_add[gam].clear();
-            }
-            if (total_num_pts_to_add == 0)
-                break;
-        }
-        k_vec = old_k_vec;
-        t = conv_to<cvec>::from(old_sol);
+        construct_linear_system(M, b);
+        t = conv_to<cvec>::from(solve(M, b));
     }
     return t;
 }
 
-const vector<vector<double> > & TransitionMatrixSolver::get_k_vec()
-{
+const vector<double> & TransitionMatrixSolver::get_k_vec()
+{   
+    if (!started_t_mat)
+        throw runtime_error("Can't return k_vec without first running get_t_matrix.");
     return k_vec;
 }

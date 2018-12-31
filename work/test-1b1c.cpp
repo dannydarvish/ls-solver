@@ -40,12 +40,6 @@ complex<double> v_00(double k, double kp)
         1.0/sqr(1+sqr(d_pi_pi*kp*fm_times_MeV));
 }
 
-// vector<vector<complex<double> > > v(double k, double kp)
-// {
-//     vector<vector<complex<double > > > ret({{v_00(k, kp)}});
-//     return ret;
-// }
-
 vector<vector<complex<double> (*)(double, double)> > v = {{v_00}};
 
 
@@ -54,24 +48,35 @@ int main(int argc, const char * argv[])
     double E =stod(argv[1]);
     double kp = sqrt(sqr(E/2.0) - sqr(m_pi));
     double delta_pipi_re;
-    double ep = 1e-1;
-    double k_max = 100*kp;
-    TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, 1e-2, 10, 1.0);
+    double ep = 1e-2;
+    double k_max = 20000.0;
+    int n_steps = 4000;
+    TransitionMatrixSolver tms(kp, beta, g, v, m_sigma, m_alpha, k_max, n_steps, ep);
     const vector<complex<double> > t = tms.get_t_matrix();
-    const vector<vector<double> > k_vec = tms.get_k_vec();
-    for (int i = 0; i < k_vec[0].size(); i++)
+    const vector<double> k_vec = tms.get_k_vec();
+    double min = 1e6;
+    int argmin;
+    int submin = 1e6;
+    int argsubmin;
+    for (int i = 0; i < k_vec.size(); i++)
     {
-        double k = k_vec[0][i];
-        if (abs(k - kp) < 1e-6*(k_vec[0][1]-k_vec[0][0]))
+        double k = k_vec[i];
+        if (abs(k-kp) < min)
         {
-            delta_pipi_re = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
-                                            sqrt(sqr(k)+sqr(m_pi))*t[i]));
+            submin = min;
+            argsubmin = argmin;
+            min = abs(k-kp);
+            argmin = i;
+        }
+    }
+    double k = k_vec[argmin];
+    delta_pipi_re = (0.5 * arg(1.0 - complex<double>(1i)*M_PI*k*
+                                            sqrt(sqr(k)+sqr(m_pi))*0.5*(t[argmin]+t[argsubmin])));
             if (delta_pipi_re < 0)
                 delta_pipi_re += M_PI;
             cout << "E: " << E << 
-                ", k_max: " << k_max << ", ep : " << ep << ", t = " << t[i] <<
+                ", k_max: " << k_max << ", ep : " << ep << ", t = " << 0.5*(t[argmin]+t[argsubmin]) <<
                     ", delta = " << delta_pipi_re << "." << endl;
-        }
-    }
+    cout << argmin << " " << k << " " << kp << " " << t[argmin] << " " << t[argmin-1] << " " << t[argmin+1] << endl;
     return 0;
 }
