@@ -203,50 +203,6 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
             int j = 0;
             for (int gamma = 0; gamma < n_chan; gamma++)
             {
-                // // cout << "starting new gamma. gamma = " << gamma << endl;
-                // double h = k_max / n_subint_steps;
-                // double hi = 1.0/h;
-                // // cvec wghts(n_subint_steps+1);
-                // cvec wghts;
-                // wghts.resize(n_subint_steps+1);
-                // for (int kpp_ind = 0; kpp_ind < k_vec[gamma].size(); kpp_ind++)
-                //     wghts[j] = 0.0;
-                // cvec wold(4), wnew(4), w(4);
-                // wold = kermom(0.0,sqr(m_alpha[gamma].first),E+cdouble(1i)*ep);
-                // double B = k_vec[gamma][0];
-                // for (int kpp_ind = 0; kpp_ind < k_vec[gamma].size()-3; kpp_ind++)
-                // {
-                //     double c = kpp_ind;
-                //     double A = B;
-                //     B = A + h;
-                //     if (kpp_ind == k_vec[gamma].size() - 4) B = (k_vec[gamma].size() - 1)*h;
-                //     wnew = kermom(B,sqr(m_alpha[gamma].first),E+cdouble(1i)*ep);
-                //     double fac;
-                //     int kk;
-                //     for (fac = 1.0, kk = 0; kk<4; kk++, fac *= hi)
-                //         w[kk] = (wnew[kk] - wold[kk])*fac;
-                //     wghts[kpp_ind] += (((c+1.0)*(c+2.0)*(c+3.0)*w[0]
-                //             -(11.0+c*(12.0+c*3.0))*w[1]+3.0*(c+2.0)*w[2]-w[3])/6.0);
-                //     wghts[kpp_ind+1] += ((-c*(c+2.0)*(c+3.0)*w[0]
-                //        +(6.0+c*(10.0+c*3.0))*w[1]-(3.0*c+5.0)*w[2]+w[3])*0.5);
-                //     wghts[kpp_ind+2] += ((c*(c+1.0)*(c+3.0)*w[0]
-                //        -(3.0+c*(8.0+c*3.0))*w[1]+(3.0*c+4.0)*w[2]-w[3])*0.5);
-                //     wghts[kpp_ind+3] += ((-c*(c+1.0)*(c+2.0)*w[0]
-                //        +(2.0+c*(6.0+c*3.0))*w[1]-3.0*(c+1.0)*w[2]+w[3])/6.0);
-                //     for (kk=0; kk<4; kk++)
-                //         wold[kk] = wnew[kk];
-                // }
-                // for (int kpp_ind = 0; kpp_ind < k_vec[gamma].size(); kpp_ind++)
-                // {
-                //     //  assert(i < dim && j < dim);
-
-                //      M(i,j) = delta(alpha, gamma) * delta(k, k_vec[gamma][kpp_ind], 1e-6 * h) - 
-                //                     sqr(k_vec[gamma][kpp_ind]) * V(k, k_vec[gamma][kpp_ind], alpha, gamma) *
-                //                     wghts[kpp_ind];
-                //     //  cout << i << " " << j << " " << dim << " " << gamma << " " << n_chan << endl;
-                //      j++;
-                // }
-                // cout << "finished with gamma = " << gamma << endl;
                 double dk;
                 for (int ii = 0; ii < subint_pts[gamma].size() - 1; ii++)
                     for (int jj = 0; jj < 4; jj++)
