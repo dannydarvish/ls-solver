@@ -18,9 +18,26 @@ inline bool fequals(double a, double b, double tol){return abs(a-b)<tol;}
 inline int delta(int i, int j){return int(i==j);}
 inline double delta(double x, double y, double tol){return int(fequals(x,y,tol));}
 
+// Notation here follows the Wu et. al paper
 class TransitionMatrixSolver
 {
 private:
+    // kp: k'
+    // k_max: upper limit in the integral
+    // E: total energy
+    // ep: \epsilon in the integral
+    // beta: the two-particle incoming channel number
+    // n_bare: number of bare particles
+    // n_chan: number of two-particle channels
+    // n_steps: the number of integration steps
+    // m_sigma: vector of single particle masses
+    // m_alpha: vector of pairs of two-particle channel masses
+    // k_vec: discretized integration domain
+    // t: t_{\alpha,\beta,k,k^\prime}
+    //    \beta and k^\prime are fixed. \alpha and k are arranged row-major
+    // g: User supplied 1-to-2 coupling
+    // v: User supplied 2-to-2 coupling
+    // V: The total potential in the Lippmann-Schwinger eq.
     double kp, k_max, E, ep;
     int beta, n_bare, n_chan, n_steps;
     bool started_t_mat;
@@ -31,7 +48,9 @@ private:
     vector<vector<cdouble (*)(double)> > g;
     vector<vector<cdouble (*)(double, double)> > v;
     cdouble V(double k, double kp, int alpha, int beta);
+    // This constructs the linear system to solve, M t = b
     void construct_linear_system(Mat<cdouble> & M, Col<cdouble> & b);
+    
 public:
     TransitionMatrixSolver(double kp, int beta, vector<vector<cdouble (*)(double)> > g,
         vector<vector<cdouble (*)(double, double)> > v, vector<double> m_sigma,
@@ -54,6 +73,7 @@ public:
         for (const auto & chan : m_alpha)
             assert(chan.first == chan.second);
     }
+    ~TransitionMatrixSolver() {}
     const cvec & get_t_matrix();
     const vector<double> & get_k_vec();
     void set_kp(double kp)
