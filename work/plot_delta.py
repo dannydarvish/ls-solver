@@ -29,4 +29,6 @@ for E in range(300,1510,10):
             delta_list.append(delta*180.0/np.pi)
 
 plt.plot(energy_list, delta_list)
+plt.xlabel(r'$E$ (MeV)')
+plt.ylabel(r'Re$\delta_{\pi\pi}$ (degrees)')
 plt.show()

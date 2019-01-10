@@ -18,7 +18,7 @@ cdouble TransitionMatrixSolver::V(double k, double kp,
     vector<complex<double> > sum_me (n_bare);
     for (int i = 0; i < n_bare; i++)
     {
-        sum_me[i] = conj(g[i][alpha](k)) * 1.0/(E - m_sigma[i]) * g[i][beta](kp);
+        sum_me[i] = conj(g[i][alpha](k)) * 1.0/(E - m_bare[i]) * g[i][beta](kp);
     }
     complex<double> sum = accumulate(sum_me.begin(), sum_me.end(), complex<double>(0.0));
     ret = sum + v[alpha][beta](k, kp);
@@ -128,11 +128,11 @@ void TransitionMatrixSolver::construct_linear_system(Mat<cdouble> & M, Col<cdoub
 
 const cvec & TransitionMatrixSolver::get_t_matrix()
 {
-    if (!started_t_mat)
+    if (!started_calc)
     {        
         cout << "Solving for transition matrix. Linear system has dimension " + 
                 to_string(n_chan*k_vec.size()) << "." << endl;
-        started_t_mat = true;
+        started_calc = true;
         if (k_max <= kp)
             throw runtime_error("k_max is not > kp. k_max = " + to_string(k_max));
         Mat<complex<double> > M;
@@ -145,7 +145,7 @@ const cvec & TransitionMatrixSolver::get_t_matrix()
 
 const vector<double> & TransitionMatrixSolver::get_k_vec()
 {   
-    if (!started_t_mat)
+    if (!started_calc)
         throw runtime_error("Can't return k_vec without first running get_t_matrix.");
     return k_vec;
 }
